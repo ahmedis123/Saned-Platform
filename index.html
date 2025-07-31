@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة ساند | Saned Platform</title>
+    
+    <!-- Leaflet Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Google Fonts for a modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- ===== CSS (UI/UX Focused) ===== -->
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --danger-color: #d93444;
+            --light-bg: #f8f9fa;
+            --dark-text: #212529;
+            --light-text: #6c757d;
+            --border-color: #dee2e6;
+            --white: #ffffff;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            margin: 0;
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            overflow: hidden;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        body.picking-location #map {
+            cursor: crosshair !important;
+        }
+
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+
+        .top-bar, .bottom-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: all;
+        }
+
+        .logo {
+            background: var(--white);
+            padding: 8px 16px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .nav-buttons button {
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: all 0.2s ease;
+        }
+        .nav-buttons button:hover {
+            background-color: #f1f1f1;
+            border-color: #ccc;
+        }
+
+        .report-button {
+            background: var(--danger-color);
+            color: var(--white);
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(217, 52, 68, 0.4);
+            transition: all 0.3s ease;
+        }
+        .report-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(217, 52, 68, 0.5);
+        }
+
+        .location-instruction {
+            position: fixed;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 10px 20px;
+            border-radius: 0 0 8px 8px;
+            z-index: 101;
+            font-weight: 700;
+            box-shadow: var(--shadow);
+            transition: top 0.3s ease-in-out;
+        }
+        .location-instruction.visible {
+            top: 0;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 99;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--white);
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px; /* Increased width for the new column */
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .modal-content h2 { margin-top: 0; color: var(--primary-color); text-align: center; }
+        .modal-close { position: absolute; top: 15px; left: 15px; background: none; border: none; font-size: 1.5em; cursor: pointer; color: var(--light-text); }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 700; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; font-family: inherit; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.2); }
+        .form-group .location-picker { padding: 12px; background: var(--light-bg); border-radius: 8px; text-align: center; cursor: pointer; border: 1px dashed var(--primary-color); color: var(--primary-color); }
+        .form-group .location-picker.selected { background: #e6f0ff; font-weight: 700; border-style: solid; }
+        .submit-btn { width: 100%; padding: 15px; background: var(--primary-color); color: var(--white); border: none; border-radius: 8px; font-size: 1.1em; font-weight: 700; cursor: pointer; transition: background-color 0.2s ease; }
+        .submit-btn:hover { background-color: #004494; }
+
+        .dashboard-table { width: 100%; border-collapse: collapse; }
+        .dashboard-table th, .dashboard-table td { padding: 10px; text-align: right; border-bottom: 1px solid var(--border-color); }
+        .dashboard-table thead { background-color: var(--light-bg); }
+        .about-content { line-height: 1.8; }
+        .about-content h3 { color: var(--primary-color); }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+    <div class="location-instruction">انقر على الخريطة لتحديد موقع البلاغ</div>
+
+    <div class="ui-container">
+        <div class="top-bar">
+            <div class="logo">ساند</div>
+            <div class="nav-buttons">
+                <button id="dashboard-btn">لوحة التحكم</button>
+                <button id="about-btn">عن المنصة</button>
+            </div>
+        </div>
+        <div class="bottom-bar">
+            <button class="report-button" id="report-now-btn">إبلاغ عن طارئ الآن</button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="report-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" data-close="report-modal">&times;</button>
+            <h2>بلاغ جديد</h2>
+            <form id="report-form">
+                <div class="form-group">
+                    <label for="report-type">نوع البلاغ</label>
+                    <select id="report-type" required>
+                        <option value="" disabled selected>اختر نوع الحالة الطارئة...</option>
+                        <option value="فيضان">فيضان</option>
+                        <option value="حريق">حريق</option>
+                        <option value="بنية تحتية">بنية تحتية (مياه/كهرباء)</option>
+                        <option value="مخلفات حرب">مخلفات حرب</option>
+                        <option value="آخر">آخر</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="phone">رقم الهاتف (اختياري)</label>
+                    <input type="tel" id="phone" placeholder="09xxxxxxxx">
+                </div>
+                <div class="form-group">
+                    <label for="description">وصف موجز للحالة</label>
+                    <textarea id="description" rows="3" placeholder="صف ما تراه لمساعدة فرق الاستجابة" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>موقع البلاغ</label>
+                    <div id="location-picker" class="location-picker">
+                        انقر هنا لتحديد الموقع على الخريطة
+                    </div>
+                    <input type="hidden" id="coordinates" required>
+                </div>
+                <button type="submit" class="submit-btn">إرسال البلاغ</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" data-close="dashboard-modal">&times;</button>
+            <h2>لوحة التحكم</h2>
+            <p>إجمالي البلاغات: <strong id="total-reports">0</strong></p>
+            <div style="max-height: 60vh; overflow-y: auto;">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>النوع</th>
+                            <th>الوصف</th>
+                            <th>رقم الهاتف</th> <!-- *** السطر المضاف في HTML *** -->
+                            <th>الوقت</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reports-table-body">
+                        <tr><td colspan="4" style="text-align: center;">لا توجد بلاغات.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="about-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" data-close="about-modal">&times;</button>
+            <div class="about-content">
+                <h2>عن منصة ساند</h2>
+                <p><strong>ساند</strong> هي مبادرة مجتمعية تهدف إلى تسريع الاستجابة للطوارئ في السودان من خلال تقنية بسيطة وفعالة.</p>
+                <h3>كيف تعمل؟</h3>
+                <ol>
+                    <li><strong>أبلغ:</strong> انقر على زر "إبلاغ" وأدخل تفاصيل الحالة.</li>
+                    <li><strong>حدد الموقع:</strong> اختر مكان الطارئ بدقة على الخريطة.</li>
+                    <li><strong>ساهم:</strong> يتم عرض بلاغك فوراً لمساعدة المجتمع والجهات المختصة.</li>
+                </ol>
+                <p>معاً، نبني مجتمعاً أكثر أماناً واستجابة.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== JavaScript (Application Logic) ===== -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const map = L.map('map').setView([15.5007, 32.5599], 10);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+
+            const reportModal = document.getElementById('report-modal');
+            const dashboardModal = document.getElementById('dashboard-modal');
+            const aboutModal = document.getElementById('about-modal');
+            const reportForm = document.getElementById('report-form');
+            const locationPicker = document.getElementById('location-picker');
+            const coordinatesInput = document.getElementById('coordinates');
+            const reportsTableBody = document.getElementById('reports-table-body');
+            const totalReportsElement = document.getElementById('total-reports');
+            const instructionBar = document.querySelector('.location-instruction');
+
+            let reports = [];
+            let tempMarker = null;
+
+            const openModal = (modal) => modal.classList.add('active');
+            const closeModal = (modal) => modal.classList.remove('active');
+
+            document.getElementById('report-now-btn').addEventListener('click', () => openModal(reportModal));
+            document.getElementById('dashboard-btn').addEventListener('click', () => {
+                updateDashboard();
+                openModal(dashboardModal);
+            });
+            document.getElementById('about-btn').addEventListener('click', () => openModal(aboutModal));
+            document.querySelectorAll('.modal-close').forEach(btn => {
+                btn.addEventListener('click', () => closeModal(document.getElementById(btn.dataset.close)));
+            });
+
+            locationPicker.addEventListener('click', () => {
+                reportModal.style.display = 'none';
+                instructionBar.classList.add('visible');
+                document.body.classList.add('picking-location');
+            });
+
+            map.on('click', function(e) {
+                if (document.body.classList.contains('picking-location')) {
+                    const { lat, lng } = e.latlng;
+                    coordinatesInput.value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                    
+                    if (tempMarker) map.removeLayer(tempMarker);
+                    tempMarker = L.marker(e.latlng).addTo(map);
+
+                    locationPicker.textContent = `تم تحديد الموقع: ${coordinatesInput.value}`;
+                    locationPicker.classList.add('selected');
+                    
+                    document.body.classList.remove('picking-location');
+                    instructionBar.classList.remove('visible');
+                    reportModal.style.display = '';
+                }
+            });
+
+            reportForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (!coordinatesInput.value) {
+                    alert('يجب تحديد الموقع من الخريطة أولاً.');
+                    return;
+                }
+
+                const newReport = {
+                    type: document.getElementById('report-type').value,
+                    phone: document.getElementById('phone').value || 'لم يحدد', // Set default value if empty
+                    description: document.getElementById('description').value,
+                    coords: coordinatesInput.value.split(',').map(Number),
+                    time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+                };
+
+                reports.push(newReport);
+                addReportToMap(newReport);
+                
+                closeModal(reportModal);
+                reportForm.reset();
+                locationPicker.textContent = 'انقر هنا لتحديد الموقع على الخريطة';
+                locationPicker.classList.remove('selected');
+                if (tempMarker) map.removeLayer(tempMarker);
+                tempMarker = null;
+
+                L.popup().setLatLng(newReport.coords).setContent('<b>تم استلام بلاغك بنجاح!</b>').openOn(map);
+            });
+
+            function addReportToMap(report) {
+                const iconColor = report.type === 'حريق' ? 'red' : 'blue';
+                const marker = L.marker(report.coords, {
+                    icon: L.icon({
+                        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${iconColor}.png`,
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                    })
+                }).addTo(map);
+                
+                marker.bindPopup(`<b>${report.type}</b><br>${report.description}<br><small>وقت البلاغ: ${report.time}</small>`);
+            }
+
+            function updateDashboard() {
+                totalReportsElement.textContent = reports.length;
+                reportsTableBody.innerHTML = '';
+
+                if (reports.length === 0) {
+                    reportsTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد بلاغات.</td></tr>';
+                    return;
+                }
+
+                [...reports].reverse().forEach(report => {
+                    const row = document.createElement('tr');
+                    // *** السطر التالي هو الذي تم تعديله في JavaScript ***
+                    row.innerHTML = `<td>${report.type}</td><td>${report.description}</td><td>${report.phone}</td><td>${report.time}</td>`;
+                    reportsTableBody.appendChild(row);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
