@@ -1,7 +1,6 @@
 #  منصة ساند | Saned Platform
 
-![Saned Platform Screenshot]([https://i.imgur.com/your-screenshot-url.png](https://codepen.io/Ahmed-Dawoud-Mohamed/full/bNVgLjx)) <!-- **ملاحظة:** استبدل هذا الرابط برابط صورة لشاشتك الرئيسية -->
-
+![Saned Platform]([https://i.imgur.com/your-screenshot-url.png](https://codepen.io/Ahmed-Dawoud-Mohamed/full/bNVgLjx)) 
 **ساند** هي منصة ذكية ومفتوحة المصدر للاستجابة السريعة للطوارئ والإبلاغ المجتمعي في السودان. تهدف المنصة إلى تمكين المواطنين من الإبلاغ الفوري عن الأزمات وإنشاء خريطة حية وتفاعلية تساعد فرق الاستجابة والمجتمع على فهم الوضع واتخاذ الإجراءات اللازمة.
 
 ---
